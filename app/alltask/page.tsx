@@ -43,6 +43,41 @@ export default function Page() {
     fetchTasks();
   }, []);
 
+  //สร้างฟังก์ชั้น สําหรับการลบงานออกจากตาราง
+  async function handleDeleteTaskClick(id: string, image_url: string) {
+    //แสดง confirm dialog เพื่อยืนยันการลบ
+    if (confirm("คุณต้องการลบงานนี้ใช่หรือไม่?")) {
+      //--------- ลบรูปภาพออกจาก storage (ถ้ามี) -----------
+      if (image_url != "") {
+        //เอาเฉพาะชื่อของรูปภาพจาก image_url
+        const image_name = image_url.split("/").pop() as string;
+        const { data, error } = await supabase.storage
+          .from("task_bk")
+          .remove([image_name]);
+
+        if (error) {
+          alert("พบข้อผิดพลาดในการลบรูปภาพ กรุณาลองใหม่อีกครั้ง...");
+          console.log(error);
+          return;
+        }
+      }
+
+      //--------- ลบรายการงานออกจากตาราง supabase -----------
+      const { data, error } = await supabase
+        .from("task_tb")
+        .delete()
+        .eq("id", id);
+
+      if (error) {
+        alert("พบข้อผิดพลาดในการลบข้อมูล กรุณาลองใหม่อีกครั้ง...");
+        console.log(error);
+        return;
+      }
+      //--------- ลบข้อมูลออกจากรายการที่แสดงบยหน้าจอ -----------
+      setTasks(tasks.filter((tasks) => tasks.id !== id));
+    }
+  }
+
   return (
     <>
       <div className="flex flex-col w-10/12 mx-auto">
@@ -91,7 +126,10 @@ export default function Page() {
                   </td>
                   <td className="border border-black p-2 ">{task.title}</td>
                   <td className="border border-black p-2 ">{task.detail}</td>
-                  <td className="border border-black p-2 " style={{ color: task.is_completed ? "green" : "red"}}>
+                  <td
+                    className="border border-black p-2 "
+                    style={{ color: task.is_completed ? "green" : "red" }}
+                  >
                     {task.is_completed ? "เสร็จสิ้น" : "ยังไม่เสร็จสิ้น"}
                   </td>
                   <td className="border border-black p-2 ">
@@ -101,9 +139,20 @@ export default function Page() {
                     {new Date(task.update_at).toLocaleDateString()}
                   </td>
                   <td className="border border-black p-2 text-center">
-                    {" "}
-                    <Link href="/edittask">แก้ไข</Link>
-                    <button>ลบ</button>
+                    <Link
+                      href={`/edittask/${task.id}`}
+                      className="mr-5 text-green-700 font-bold"
+                    >
+                      แก้ไข
+                    </Link>
+                    <button
+                      className="text-red-700 font-bold cursor-pointer"
+                      onClick={() =>
+                        handleDeleteTaskClick(task.id, task.image_url)
+                      }
+                    >
+                      ลบ
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -111,7 +160,12 @@ export default function Page() {
           </table>
         </div>
         <div className="flex justify-center mt-10">
-          <Link href="/" className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">กลับไปหน้าแรก</Link>
+          <Link
+            href="/"
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+          >
+            กลับไปหน้าแรก
+          </Link>
         </div>
       </div>
     </>
